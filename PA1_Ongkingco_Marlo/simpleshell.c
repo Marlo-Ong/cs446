@@ -34,6 +34,32 @@ int main()
 
         fgets(input, MAX_INPUT_CHARS, stdin);
         int numWords = parseInput(input, splitWords, MAX_INPUT_WORDS);
+
+        // Interpet CLI
+        char *command = splitWords[0];
+
+        if (strcmp("cd", command) == 0)
+        {
+            if (numWords == 2)
+            {
+                changeDirectories(splitWords[1]);
+            }
+            else
+            {
+                printf("Path Not Formatted Correctly! \n");
+                continue;
+            }
+        }
+
+        else if (strcmp("exit", command) == 0)
+        {
+            break;
+        }
+
+        else
+        {
+            executeCommand(&command, NULL, NULL);
+        }
     }
 
     return 0;
@@ -41,6 +67,8 @@ int main()
 
 void changeDirectories(const char *path)
 {
+    if (chdir(path) == -1)
+        printf("chdir Failed: %s", strerror);
 }
 
 void executeCommand(char *const *enteredCommand, const char *infile, const char *outfile)
@@ -50,7 +78,7 @@ void executeCommand(char *const *enteredCommand, const char *infile, const char 
 int parseInput(char *input, char splitWords[][500], int maxWords)
 {
     int numWords = 0;
-    const char *delim = " ";
+    const char *delim = " \n";
     char *nextWord = strtok(input, delim);
 
     while (nextWord != NULL && numWords < maxWords)
