@@ -67,12 +67,15 @@ int main()
         {
             if (strcmp(splitWords[i], ">") == 0) // Output
             {
-                infile = splitWords[i + 1];
+                outfile = splitWords[i + 1];
+                numWords = i;
+                printf("DETECTED REDIRECT \n");
                 break;
             }
             if (strcmp(splitWords[i], "<") == 0) // Input
             {
-                outfile = splitWords[i + 1];
+                infile = splitWords[i + 1];
+                numWords = i;
                 break;
             }
         }
@@ -110,6 +113,19 @@ int executeCommand(char *const *enteredCommand, const char *infile, const char *
 
     if (pid == 0) // Child
     {
+        // Check redirection
+        if (outfile != NULL && strcmp(outfile, "") != 0)
+        {
+            int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            dup2(fd, STDOUT_FILENO);
+        }
+        if (infile != NULL && strcmp(infile, "") != 0)
+        {
+            int fd = open(infile, O_RDONLY, 0666);
+            dup2(fd, STDIN_FILENO);
+        }
+
+        // Continue new process
         int success = execvp(enteredCommand[0], enteredCommand);
         if (success == -1)
         {
