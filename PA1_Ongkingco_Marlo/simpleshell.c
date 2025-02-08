@@ -1,12 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/stat.h>
 
 #define MAX_INPUT_CHARS 500
 #define MAX_INPUT_WORDS 20
@@ -17,12 +14,12 @@ int parseInput(char *input, char splitWords[][MAX_INPUT_CHARS], int maxWords);
 
 int main()
 {
+    char input[MAX_INPUT_CHARS];
+    char splitWords[MAX_INPUT_WORDS][MAX_INPUT_CHARS];
+
     // Set up prompt
     const char netid[] = "mongkingco";
     char cwd[MAX_INPUT_CHARS];
-
-    char input[MAX_INPUT_CHARS];
-    char splitWords[MAX_INPUT_WORDS][MAX_INPUT_CHARS];
 
     // Main loop
     while (1)
@@ -68,28 +65,27 @@ int main()
             if (strcmp(splitWords[i], ">") == 0) // Output
             {
                 outfile = splitWords[i + 1];
-                numWords = i;
-                printf("DETECTED REDIRECT \n");
+                numWords = i; // # valid words stops before redirect char
                 break;
             }
             if (strcmp(splitWords[i], "<") == 0) // Input
             {
                 infile = splitWords[i + 1];
-                numWords = i;
+                numWords = i; // # valid words stops before redirect char
                 break;
             }
         }
 
-        // Dynamically copy new array of string args
-        char **args = (char **)malloc((numWords + 1) * sizeof(char *));
+        // Dynamically copy new array of strings
+        char **reducedWords = (char **)malloc((numWords + 1) * sizeof(char *));
         for (int i = 0; i < numWords; i++)
         {
-            args[i] = strdup(splitWords[i]);
+            reducedWords[i] = strdup(splitWords[i]);
         }
-        args[numWords] = NULL; // Null terminate string array
+        reducedWords[numWords] = NULL; // Null terminate string array
 
         // Execute command with redirection
-        executeCommand(args, infile, outfile);
+        executeCommand(reducedWords, infile, outfile);
     }
 
     return 0;
@@ -131,6 +127,7 @@ int executeCommand(char *const *enteredCommand, const char *infile, const char *
         {
             printf("exec Failed: %s ]n", strerror(errno));
             _exit(1);
+            return -1;
         }
     }
 
@@ -139,6 +136,7 @@ int executeCommand(char *const *enteredCommand, const char *infile, const char *
         int status;
         wait(&status);
         printf("Child finished with error status: %d \n", status);
+        return status;
     }
 
     return 0;
