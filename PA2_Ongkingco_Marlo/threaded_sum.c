@@ -25,3 +25,21 @@ int main(int argc, char* argv[])
 {
     return 0;
 }
+
+int readFile(char filename[], int arr[]) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL)
+    {
+        printf("File not found...\n");
+        return -1;
+    }
+    
+    int count = 0;
+    while (fscanf(file, "%d", &arr[count]) == 1)
+    {
+        count++;
+    }
+
+    fclose(file);
+    return count;
+}
