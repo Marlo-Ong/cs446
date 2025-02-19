@@ -1,0 +1,10 @@
+a. What are your observations?
+
+b. Do you find the observed behavior reasonable? Why or why not?
+
+c. What kind of considerations did you make for your implementation of the Critical Section? Provide reasoning / justification.
+
+[EXTRA] What do you think would happen if instead of having the Threads loop over the int
+array to compute a local arraySum, and finally update the totalSum, we were instead just directly
+adding to totalSum each time we were accessing an array element within each Thread (i.e. within
+the Thread’s for loop)? Why?
