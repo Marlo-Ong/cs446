@@ -23,6 +23,29 @@ void *arraySum(void *);
 
 int main(int argc, char *argv[])
 {
+    // Check for parameters
+    if (argc != 3)
+    {
+        printf("Not enough parameters. \n");
+        return -1;
+    }
+
+    // Read file
+    int ints[MAX_INPUT_LENGTH];
+    int count = readFile(argv[1], ints);
+    long long int totalSum = 0;
+
+    // Set up clock
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    // printf("%ld \n", (long)time.tv_sec);
+
+    pthread_mutex_t mutex;
+
+    int threadsRequested = atoi(argv[2]);
+    // printf("%d \n", threadsRequested);
+    thread_data_t threads[threadsRequested];
+
     return 0;
 }
 
