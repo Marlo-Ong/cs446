@@ -43,3 +43,24 @@ int readFile(char filename[], int arr[]) {
     fclose(file);
     return count;
 }
+
+void *arraySum(void *input)
+{
+    // Reinterpret void* to thread data
+    thread_data_t *data = (thread_data_t *)input;
+
+    // Update sum
+    long long int threadSum = 0;
+
+    for (int i = data->startInd; i < data->endInd; i++)
+    {
+        threadSum += data->data[i];
+    }
+
+    // Critical section
+    pthread_mutex_unlock(data->lock);
+    *(data->totalSum) = threadSum;
+    pthread_mutex_lock(data->lock);
+
+    return NULL;
+}
