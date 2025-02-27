@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define MAX_INPUT_LENGTH 1000
+#define MAX_INPUT_LENGTH 1000000
 
 typedef struct _thread_data_t
 {
@@ -33,18 +33,64 @@ int main(int argc, char *argv[])
     // Read file
     int ints[MAX_INPUT_LENGTH];
     int count = readFile(argv[1], ints);
-    long long int totalSum = 0;
 
-    // Set up clock
-    struct timeval time;
-    gettimeofday(&time, NULL);
-    // printf("%ld \n", (long)time.tv_sec);
-
-    pthread_mutex_t mutex;
-
+    // Check requested thread count
     int threadsRequested = atoi(argv[2]);
-    // printf("%d \n", threadsRequested);
-    thread_data_t threads[threadsRequested];
+    if (threadsRequested > count)
+    {
+        printf("Too many threads requested \n");
+        return -1;
+    }
+
+    // Start clock
+    struct timeval startTime;
+    gettimeofday(&startTime, NULL);
+
+    // Initialize mutex
+    long long int totalSum = 0;
+    pthread_mutex_t mutex;
+    pthread_mutex_init(&mutex, NULL);
+
+    // Initialize thread data
+    thread_data_t threadData[threadsRequested];
+    int numValuesPerThread = (int)(threadsRequested / count);
+
+    for (int i = 0; i < threadsRequested; i++)
+    {
+        // Set array slice to be used for this thread
+        threadData[i].data = ints;
+        threadData[i].startInd = i * numValuesPerThread;
+        threadData[i].endInd = (i * numValuesPerThread) + (numValuesPerThread - 1);
+
+        // (Give any remaining values to last thread)
+        if (i == threadsRequested - 1)
+        {
+            threadData[i].endInd = count - 1;
+        }
+
+        // Point to lock and sum
+        threadData[i].lock = &mutex;
+        threadData[i].totalSum = &totalSum;
+    }
+
+    // Initialize pthread objects
+    pthread_t threads[threadsRequested];
+
+    for (int i = 0; i < threadsRequested; i++)
+    {
+        pthread_create(&threads[i], NULL, arraySum, (void *)&threadData[i]);
+        pthread_join(threads[i], NULL);
+    }
+
+    // End clock
+    struct timeval endTime;
+    gettimeofday(&endTime, NULL);
+
+    double duration;
+    duration = (endTime.tv_sec - startTime.tv_sec) * 1000.0;    // sec to ms
+    duration += (endTime.tv_usec - startTime.tv_usec) / 1000.0; // us to ms
+
+    printf("Total sum: %lld \nExecution time: %fms", totalSum, duration);
 
     return 0;
 }
