@@ -53,19 +53,19 @@ int main(int argc, char *argv[])
 
     // Initialize thread data
     thread_data_t threadData[threadsRequested];
-    int numValuesPerThread = (int)(threadsRequested / count);
+    int numValuesPerThread = count / threadsRequested;
 
     for (int i = 0; i < threadsRequested; i++)
     {
         // Set array slice to be used for this thread
         threadData[i].data = ints;
         threadData[i].startInd = i * numValuesPerThread;
-        threadData[i].endInd = (i * numValuesPerThread) + (numValuesPerThread - 1);
+        threadData[i].endInd = (i * numValuesPerThread) + (numValuesPerThread);
 
         // (Give any remaining values to last thread)
         if (i == threadsRequested - 1)
         {
-            threadData[i].endInd = count - 1;
+            threadData[i].endInd = count;
         }
 
         // Point to lock and sum
@@ -129,7 +129,7 @@ void *arraySum(void *input)
 
     // Critical section
     pthread_mutex_unlock(data->lock);
-    *(data->totalSum) = threadSum;
+    *(data->totalSum) += threadSum;
     pthread_mutex_lock(data->lock);
 
     return NULL;
