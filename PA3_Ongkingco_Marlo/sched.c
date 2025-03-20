@@ -6,6 +6,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include <sys/mman.h>
 
 #define MAX_INPUT_LENGTH 2000000
 
@@ -47,7 +50,7 @@ int main(int argc, char *argv[])
     int ints[MAX_INPUT_LENGTH];
 
     // Check requested thread count
-    int threadsRequested = atoi(argv[2]);
+    int threadsRequested = atoi(argv[1]);
 
     // Initialize mutex
     long long int totalSum = 0;
@@ -100,12 +103,12 @@ void *arraySum(void *input)
         for (int i = 0; i < data->numVals; i++)
         {
             struct timespec start;
-            clock_gettime(NULL, &start);
+            clock_gettime(CLOCK_REALTIME, &start);
 
             threadSum += data->data[i];
 
             struct timespec end;
-            clock_gettime(NULL, &end);
+            clock_gettime(CLOCK_REALTIME, &end);
 
             // Update max latency
             long latency = end.tv_nsec - start.tv_nsec;
@@ -118,7 +121,7 @@ void *arraySum(void *input)
         *(data->totalSum) += threadSum;
         pthread_mutex_lock(data->lock);
 
-        printf("Max latency: %ld", latency_max);
+        printf("\nMax latency: %ld", latency_max);
     }
 
     return NULL;
