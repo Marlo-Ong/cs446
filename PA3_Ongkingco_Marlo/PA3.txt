@@ -1,68 +1,42 @@
-a. What are your observations?
+1) Run the program with an amount of Threads as many as the number of CPUs of your
+system (if you don’t know you can use the nproc --all command in your terminal, or in
+C use the System Call sysconf(_SC_NPROCESSORS_ONLN);.
+Write your observations.
 
-A: As the number of threads requested increases, so does the execution time. Running the summation with 1 thread requested
-yields the fastest execution time compared to any other number of threads.
+A: The number of CPUs in my system (as a result of nproc) is 8. Running the program with 8 threads
+results in a roughly-equal max latency between all threads. Some threads occassionally spike in max latency
+before going back to normal levels.
 
-1,000 values:
-- 1 threads = < 0.10ms
-- 2 threads = 0.10ms - 0.13ms
-- 4 threads = 0.15ms - 0.18ms
-- 8 threads = 0.21ms - 0.29ms
-- 16 threads = 0.42ms - 0.51ms
-- 32 threads = 0.72ms - 0.80ms
-- 64 threads = 1.40ms - 1.60ms
-- 128 threads = 2.80ms - 3.00ms
-...
 
-1,000,000 values:
-- 1 threads = 2.80ms - 2.90ms
-- 2 threads = 2.85ms - 2.92ms
-- 4 threads = 2.97ms - 3.00ms
-- 8 threads = 3.20ms - 3.30ms
-- 16 threads = 3.45ms - 3.61ms
-- 32 threads = 4.22ms - 4.29ms
-- 64 threads = 5.27ms - 5.53ms
-- 128 threads = 7.51ms - 8.58ms
-...
 
-b. Do you find the observed behavior reasonable? Why or why not?
+2) Run the program again with the same amount of Threads. Open a different terminal and
+issue the command: watch -n.5 grep ctxt /proc/<pid>/status
+This allows you to see the number of Context Switches (voluntary and involuntary) that a
+Task with PID <pid>; has undergone so far, and get an update of it every 0.5 seconds. You
+can find the PID of a specific task through pstree -p, or more easily by the running
+sched.c which should now be printing out the PID of each thread alongside each progress
+bar. Now (as you are observing the Context Switches of a specific Thread), switch its Scheduling
+Policy to a Real-Time one. Try both Policies, and 1-2 different Priority Levels.
+Write the sequence of commands you used for this question, and your observations.
 
-A: It at first seems counter-intuitive that more threads running concurrently doesn't yield
-a lesser total execution time. However, it makes sense that the overhead of more threads
-would make the overall execution time slower.
+Sequence of commands: ./sched 8 -> watch -n.5 grep ctxt /proc/9847/status
 
-As the instructions have us start the timer before implementing any threading, some of the
-execution time is contributed by the fact we have to initialize the thread data and
-pthreads within their respective loops. More threads means more initializations and time loss.
+A: The watch command lists the number of voluntary and non-voluntary context switches of the thread.
+It shows that the number of voluntary ctxt switches remains constant at 835, while the number of 
+nonvoluntary ctxt switches increases steadily.
 
-However, discounting that overhead, during the summation phase itself, multiple threads
-running arraySum() would also be impacted in speed by the mutex behavior - each thread will have
-to wait its turn to update the totalSum as it waits for the mutex to be unlocked, then locked.
-1000 threads, all with 1 value to sum, would each need to wait for the previous thread to update the sum.
-This happens 1000 times over, essentially being a series operation instead of parallel, same as if
-it were 1 thread updating the sum 1000 times, but being much slower due to threading overhead.
 
-c. What kind of considerations did you make for your implementation of the Critical Section? Provide reasoning / justification.
+3) Run the program again with the same amount of Threads.
+Create a system cpuset with all CPUs except 1 (as described in Method b) in the section
+about Linux Multi-Processor Control) and move all Tasks (all User-Level and Kernel-Level ones
+that are possible to move) into that set. Create a dedicated cpuset with only the CPU that
+is excluded from the system one.
+Move one of the Threads of sched.c to the dedicated cpuset.
+Write the sequence of commands you used for this question, and your observations.
 
-A: I wanted to consider which behaviors would be necessary to only have 1 thread perform at a time, and which
-were unnecessary. For instance, defining the Critical Section as the entire summation loop (lines 125-128)
-would be unnecessary as this would make it so that only one thread can do summations at a time, defeating the
-whole purpose of splitting work between threads. Defining the Critical Section as just the summation itself (line 127)
-would also be unnecessary as it defeats the purpose of using a local variable. The local threadSum variable is not
-shared between threads, so there would be no race condition to avoid. While these choices wouldn't break the program, they
-would be much slower in execution time as only 1 thread can run the code at a time. Updating the totalSum,
-however, is a shared behavior between threads and is only 1 non-looping line of code, so I defined only that line as the Critical Section.
 
-[EXTRA] What do you think would happen if instead of having the Threads loop over the int
-array to compute a local arraySum, and finally update the totalSum, we were instead just directly
-adding to totalSum each time we were accessing an array element within each Thread (i.e. within
-the Thread’s for loop)? Why?
-
-A: If you were to update the thread data's totalSum in each iteration, a race condition would
-occur, as multiple threads may be attempting to update the totalSum at the same time. For instance,
-a thread could be in the middle of incrementing the sum when it is interrupted by another thread.
-The totalSum may not have been updated prior to the interrupt, potentially making it so that
-increment did not occur. The interrupting thread would be using an old saved value of the sum.
-These behaviors would ulitmately result in an ending sum that is much less than the "real" sum.
-Having a local arraySum avoids this because each thread has its own stack, making it so they can update
-their local sum without affecting the shared totalSum vairable until the end, when it is copied.
+4) While 3) is still executing with one Thread on the dedicated cpuset, observe the Context
+Switches of that Thread with:
+watch -n.5 grep ctxt /proc/<pid>;/status
+and then change its Scheduling Policy to a Real-Time one at 1-2 Priority Levels.
+Write the sequence of commands you used for this question, and your observations.
