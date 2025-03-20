@@ -36,6 +36,7 @@ typedef struct _thread_data_t
 } thread_data_t;
 
 void *arraySum(void *);
+void print_progress(pid_t, size_t);
 
 int main(int argc, char *argv[])
 {
@@ -121,7 +122,7 @@ void *arraySum(void *input)
         *(data->totalSum) += threadSum;
         pthread_mutex_lock(data->lock);
 
-        printf("\nMax latency: %ld", latency_max);
+        print_progress(data->localTid, latency_max);
     }
 
     return NULL;
