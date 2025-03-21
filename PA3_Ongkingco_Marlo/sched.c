@@ -48,7 +48,8 @@ int main(int argc, char *argv[])
     }
 
     // Dynamically allocate fixed-size array of 2 million ints.
-    int ints[MAX_INPUT_LENGTH];
+    int *ints;
+    ints = (int *)malloc(MAX_INPUT_LENGTH * sizeof(int));
 
     // Check requested thread count
     int threadsRequested = atoi(argv[1]);
