@@ -11,6 +11,7 @@
 
 #define MBLOCK_HEADER_SZ offsetof(mblock_t, payload)
 
+// Type definitions
 typedef struct _mblock_t
 {
     struct _mblock_t *prev;
@@ -25,6 +26,7 @@ typedef struct _mlist_t
     mblock_t *head;
 } mlist_t;
 
+// Function definitions
 void *mymalloc(size_t size);
 void myfree(void *ptr);
 
@@ -37,8 +39,15 @@ mblock_t *growHeapBySize(size_t size);
 
 void printMemList(const mblock_t *headptr);
 
+// Global memory list
+mlist_t mlist;
+
 int main(int argc, char *argv[])
 {
+    // Initialize memory list
+    mlist.head = NULL;
+
+    // Test code
     void *p1 = mymalloc(10);
     void *p2 = mymalloc(100);
     void *p3 = mymalloc(200);
@@ -63,7 +72,13 @@ int main(int argc, char *argv[])
 
 void *mymalloc(size_t size)
 {
-    return NULL;
+    // Find a free block. If there is none, return null.
+    mblock_t *curr = findFreeBlockOfSize(size);
+    if (curr == NULL)
+    {
+        return NULL;
+    }
+
 }
 
 void myfree(void *ptr)
@@ -77,6 +92,19 @@ mblock_t *findLastMemlistBlock(void)
 
 mblock_t *findFreeBlockOfSize(size_t size)
 {
+    // Traverse memory list to find first available
+    // free block that can fit the requested size.
+    mblock_t *curr = mlist.head;
+    while (curr != NULL)
+    {
+        if (curr->size >= size)
+        {
+            return curr;
+        }
+
+        curr = curr->next;
+    }
+
     return NULL;
 }
 
