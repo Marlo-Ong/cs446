@@ -72,8 +72,6 @@ int main(int argc, char *argv[])
 
 void *mymalloc(size_t size)
 {
-    printMemList(mlist.head);
-
     // Find a free block. If there is none, add a block to the heap.
     mblock_t *curr = findFreeBlockOfSize(size);
     if (curr == NULL)
@@ -88,11 +86,36 @@ void *mymalloc(size_t size)
     // Change free/allocated status.
     curr->status = 1;
 
+    // DEBUG
+    printf("ALLOC %zu \n", size);
+    printMemList(mlist.head);
+
     return &(curr->payload);
 }
 
 void myfree(void *ptr)
 {
+    // Sanity check: memory block is not null,
+    // address of block is greater than address of head,
+    // address of block is less than the current break.
+    if (!ptr || ptr < (void *)mlist.head || ptr >= sbrk(0))
+    {
+        return;
+    }
+
+    // Reverse-compute the memory block to free.
+    char *addr_payload = (char *)ptr;
+    char *addr_mblock_start = addr_payload - MBLOCK_HEADER_SZ;
+    mblock_t *blockToFree = (mblock_t *)addr_mblock_start;
+
+    // Free the memory block and coalesce.
+    blockToFree->status = 0;
+    coallesceBlockPrev(blockToFree);
+    coallesceBlockNext(blockToFree);
+
+    // DEBUG
+    printf("DEALLOC \n");
+    printMemList(mlist.head);
 }
 
 mblock_t *findLastMemlistBlock(void)
@@ -166,17 +189,69 @@ void splitBlockAtSize(mblock_t *block, size_t newSize)
 
 void coallesceBlockPrev(mblock_t *freedBlock)
 {
+    // Don't coalesce if the block or its previous are null.
+    if (!freedBlock || !freedBlock->prev)
+    {
+        return;
+    }
+
+    // Don't coalesce if the block or its previous are not free.
+    if (freedBlock->status == 1 || freedBlock->prev->status == 1)
+    {
+        return;
+    }
+
+    // Adjust linked list (delete current node).
+    freedBlock->prev->next = freedBlock->next;
+    if (freedBlock->next != NULL)
+    {
+        freedBlock->next->prev = freedBlock->prev;
+    }
+
+    // Increase size of previous block.
+    freedBlock->prev->size += MBLOCK_HEADER_SZ + freedBlock->size;
 }
 
 void coallesceBlockNext(mblock_t *freedBlock)
 {
+    // Don't coalesce if the block or its next are null.
+    if (!freedBlock || !freedBlock->next)
+    {
+        return;
+    }
+
+    // Don't coalesce if the block or its next are not free.
+    if (freedBlock->status == 1 || freedBlock->next->status == 1)
+    {
+        return;
+    }
+
+    // Increase size of current block.
+    freedBlock->size += MBLOCK_HEADER_SZ + freedBlock->next->size;
+
+    // Adjust linked list (delete next node).
+    freedBlock->next = freedBlock->next->next;
+    if (freedBlock->next != NULL)
+    {
+        freedBlock->next->prev = freedBlock;
+    }
 }
 
 mblock_t *growHeapBySize(size_t size)
 {
-    // Increment break and reinterpret it as a memory block.
+    // Grow heap by either 1KB, or the requested size if larger.
     size_t total_size = size + MBLOCK_HEADER_SZ;
-    mblock_t *block = (mblock_t *)sbrk(total_size);
+    size_t request_size = total_size > 1024 ? total_size : 1024;
+    void *request = sbrk(request_size);
+
+    // Check validity of sbrk call.
+    if (request == (void *)-1)
+    {
+        return NULL;
+    }
+
+    // Reinterpret it as a memory block.
+    mblock_t *block = (mblock_t *)request;
 
     // Set block values.
     block->prev = NULL;
