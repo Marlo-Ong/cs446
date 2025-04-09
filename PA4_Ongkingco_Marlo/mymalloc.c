@@ -72,13 +72,23 @@ int main(int argc, char *argv[])
 
 void *mymalloc(size_t size)
 {
-    // Find a free block. If there is none, return null.
+    printMemList(mlist.head);
+
+    // Find a free block. If there is none, add a block to the heap.
     mblock_t *curr = findFreeBlockOfSize(size);
     if (curr == NULL)
     {
-        return NULL;
+        curr = growHeapBySize(size);
+    }
+    else
+    {
+        splitBlockAtSize(curr, size);
     }
 
+    // Change free/allocated status.
+    curr->status = 1;
+
+    return &(curr->payload);
 }
 
 void myfree(void *ptr)
@@ -87,7 +97,16 @@ void myfree(void *ptr)
 
 mblock_t *findLastMemlistBlock(void)
 {
-    return NULL;
+    mblock_t *last = mlist.head;
+    if (last == NULL)
+    {
+        return NULL;
+    }
+    while (last->next != NULL)
+    {
+        last = last->next;
+    }
+    return last;
 }
 
 mblock_t *findFreeBlockOfSize(size_t size)
@@ -97,7 +116,7 @@ mblock_t *findFreeBlockOfSize(size_t size)
     mblock_t *curr = mlist.head;
     while (curr != NULL)
     {
-        if (curr->size >= size)
+        if (curr->status == 0 && curr->size >= size)
         {
             return curr;
         }
@@ -110,6 +129,39 @@ mblock_t *findFreeBlockOfSize(size_t size)
 
 void splitBlockAtSize(mblock_t *block, size_t newSize)
 {
+    // If the block is an exact fit, no need to split.
+    if (block->size == newSize)
+    {
+        return;
+    }
+
+    size_t remaining_size = block->size - newSize;
+
+    // Only split if the remaining size is large enough for a new block.
+    if (remaining_size <= sizeof(mblock_t) + 1)
+    {
+        return;
+    }
+
+    // Create a block at the address following the used space.
+    char *addr_remaining_blocck = (char *)block + MBLOCK_HEADER_SZ + newSize;
+    mblock_t *remaining_block = (mblock_t *)addr_remaining_blocck;
+
+    // Initialize the new free block
+    remaining_block->prev = block;
+    remaining_block->next = block->next;
+    remaining_block->size = remaining_size - MBLOCK_HEADER_SZ;
+    remaining_block->status = 0;
+    remaining_block->payload = (char *)remaining_block + MBLOCK_HEADER_SZ;
+
+    // Fix links in the original block and the next block
+    if (block->next != NULL)
+    {
+        block->next->prev = remaining_block;
+    }
+
+    block->next = remaining_block;
+    block->size = newSize;
 }
 
 void coallesceBlockPrev(mblock_t *freedBlock)
@@ -122,7 +174,30 @@ void coallesceBlockNext(mblock_t *freedBlock)
 
 mblock_t *growHeapBySize(size_t size)
 {
-    return NULL;
+    // Increment break and reinterpret it as a memory block.
+    size_t total_size = size + MBLOCK_HEADER_SZ;
+    mblock_t *block = (mblock_t *)sbrk(total_size);
+
+    // Set block values.
+    block->prev = NULL;
+    block->next = NULL;
+    block->size = size;
+    block->status = 0;
+    block->payload = (char *)block + MBLOCK_HEADER_SZ;
+
+    // Update memory freelist.
+    if (!mlist.head)
+    {
+        mlist.head = block;
+    }
+    else
+    {
+        mblock_t *last = findLastMemlistBlock();
+        last->next = block;
+        block->prev = last;
+    }
+
+    return block;
 }
 
 void printMemList(const mblock_t *head)
