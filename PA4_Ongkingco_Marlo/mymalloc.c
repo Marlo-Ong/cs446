@@ -87,7 +87,6 @@ void *mymalloc(size_t size)
     curr->status = 1;
 
     // DEBUG
-    printf("ALLOC %zu \n", size);
     printMemList(mlist.head);
 
     return &(curr->payload);
@@ -110,11 +109,10 @@ void myfree(void *ptr)
 
     // Free the memory block and coalesce.
     blockToFree->status = 0;
-    coallesceBlockPrev(blockToFree);
     coallesceBlockNext(blockToFree);
+    coallesceBlockPrev(blockToFree);
 
     // DEBUG
-    printf("DEALLOC \n");
     printMemList(mlist.head);
 }
 
@@ -201,15 +199,15 @@ void coallesceBlockPrev(mblock_t *freedBlock)
         return;
     }
 
+    // Increase size of previous block.
+    freedBlock->prev->size += MBLOCK_HEADER_SZ + freedBlock->size;
+
     // Adjust linked list (delete current node).
     freedBlock->prev->next = freedBlock->next;
     if (freedBlock->next != NULL)
     {
         freedBlock->next->prev = freedBlock->prev;
     }
-
-    // Increase size of previous block.
-    freedBlock->prev->size += MBLOCK_HEADER_SZ + freedBlock->size;
 }
 
 void coallesceBlockNext(mblock_t *freedBlock)
@@ -256,9 +254,10 @@ mblock_t *growHeapBySize(size_t size)
     // Set block values.
     block->prev = NULL;
     block->next = NULL;
-    block->size = size;
+    block->size = request_size;
     block->status = 0;
     block->payload = (char *)block + MBLOCK_HEADER_SZ;
+    splitBlockAtSize(block, size);
 
     // Update memory freelist.
     if (!mlist.head)
